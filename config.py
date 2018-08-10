@@ -1,0 +1,9 @@
+DATA_DIR = "price/preprocessed/"
+BATCH_SIZE = 32
+NUM_STEP = 5
+MIE_UNITS = 128
+LATENT_SIZE = 128
+ALPHA = 0.8
+SEQ_LEN = 6
+LR = 0.001
+EPOCH = 100
