@@ -103,37 +103,36 @@ def train_minibatch(batch,l_batch,anneal,seq_len = config.SEQ_LEN):
                             tf.square(p_z.distribution.std) + 0.0001) + 1, 1)
         rec_loss = tf.reshape(rec_loss,[config.BATCH_SIZE,1])
         kld = tf.reshape(kld,[config.BATCH_SIZE,1])
-        f.append(kld+anneal*rec_loss)
+        f.append(anneal*kld+rec_loss)
 
     f = tf.concat([f],axis = 0)
     f = tf.transpose(f,perm=[1,0,2])
-    print(f)
     v = tf.concat([config.ALPHA*v_star,tf.ones([config.BATCH_SIZE,1,1])],1)
-    loss = tf.multiply(v,f)
-    gradients = tf.gradients(loss, tf.trainable_variables())
+    loss = tf.reduce_mean(tf.multiply(v,f))
+    # gradients = tf.gradients(loss, tf.trainable_variables())
     opt = tf.train.AdamOptimizer(learning_rate= config.LR)
-    optimize = opt.apply_gradients(zip(gradients,
-                               tf.trainable_variables()))
-    return optimize
+    optimize = opt.minimize(loss)
+    return optimize,loss,v
 
 if __name__ == "__main__":
-    dataset,labelset = preprocess(config.DATA_DIR+"AAPL.txt")
     import numpy as np
+    dataset,labelset = preprocess(config.DATA_DIR+"AAPL.txt")
     with tf.Graph().as_default() as graph:
         batch = tf.placeholder(shape = [config.BATCH_SIZE,config.SEQ_LEN,3],dtype=tf.float32,name = 'batch')
         l_batch = tf.placeholder(shape = [config.BATCH_SIZE,config.SEQ_LEN,2],dtype=tf.float32, name = 'l_batch')
-        anneal = tf.placeholder(dtype = tf.float32)
-        optimize = train_minibatch(batch = batch,l_batch= l_batch,anneal = anneal)
+        anneal = tf.placeholder(shape = [1],dtype = tf.float32)
+        optimize,loss,v= train_minibatch(batch = batch,l_batch= l_batch,anneal = anneal)
         num_iters = len(dataset) // config.BATCH_SIZE
         with tf.Session() as sess:
             for e in range(config.EPOCH):
                 for i in range(num_iters):
+
                     sess.run(tf.global_variables_initializer())
                     feed = {batch:dataset[i*config.BATCH_SIZE:(i+1)*config.BATCH_SIZE,:,:],
-                            l_batch:labelset[i*config.BATCH_SIZE:(i+1)*config.BATCH_SIZE,:,:],anneal:1}
-                    sess.run(optimize,feed_dict=feed)
-
-
+                            l_batch:labelset[i*config.BATCH_SIZE:(i+1)*config.BATCH_SIZE,:,:],anneal:np.array([min(2*(e+0.001)/(5*(num_iters*config.EPOCH)),0)])}
+                    _,temploss,V= sess.run([optimize,loss,v],feed_dict=feed)
+                    # print(y)
+                    print(temploss)
     # with tf.Graph().as_default() as graph:
         # input_data = tf.placeholder(tf.float32,[config.BATCH_SIZE,config.SEQ_LEN,3],'input_data')
         # input_label = tf.placeholder(tf.float32,[config.BATCH_SIZE,config.SEQ_LEN,2],'input_label')
