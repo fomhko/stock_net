@@ -1,1 +1,1 @@
-Implementation of "stock_net" proposed in ACL2018
+Implementation of "stock_net" in ACL2018
