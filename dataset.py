@@ -3,7 +3,9 @@ import tensorflow as tf
 import pandas as pd
 import config
 import os
+import pickle
 def preprocess(shuffle = False):
+    np.random.seed(1234)
     dataset = []
     labelset = []
     data = []
@@ -44,4 +46,10 @@ def preprocess(shuffle = False):
     return dataset,labelset
 if __name__ == "__main__":
     dataset, labelset = preprocess(config.DATA_DIR)
+    f = open("dataset",'wb')
+    pickle.dump(dataset,f)
+    f.close()
+    f = open("labelset",'wb')
+    pickle.dump(labelset,f)
+    f.close()
 

@@ -4,6 +4,10 @@ from zhusuan import reuse
 from dataset import preprocess
 from tensorflow.python import debug as tf_debug
 import config
+import pickle
+import numpy as np
+
+
 def MIE(input_data,state): #GRU market information encoder
     with tf.variable_scope("GRU",reuse=tf.AUTO_REUSE):
         cell = tf.nn.rnn_cell.GRUCell(num_units = config.MIE_UNITS,name = 'GRUCELL')
@@ -77,21 +81,18 @@ def ATA(Y,G,g_t): #Attentive Temporal Auxiliary
         return y_T,v_star
 
 def train_minibatch(batch,l_batch,anneal,seq_len = config.SEQ_LEN):
-    # with tf.Graph().as_default() as graph:
     state = tf.zeros(shape=[config.BATCH_SIZE, config.MIE_UNITS], name='state')
     state = tf.placeholder_with_default(state, state.shape, state.op.name)
-    # z = tf.zeros(shape=[config.BATCH_SIZE, config.LATENT_SIZE], name='z')
-    # z = tf.placeholder_with_default(z, z.shape, z.op.name)
     init_z = tf.zeros(shape=[config.BATCH_SIZE, config.LATENT_SIZE], name='prev_z')
-    # prev_z = tf.placeholder_with_default(prev_z, prev_z.shape, prev_z.op.name)
     z=[]
     z.append(init_z)
     G=[]
     Y=[]
-    f = []
+    # f = []
+    klds = []
+    rec_losses=[]
     for time_step in range(seq_len):
         state,_ = MIE(batch[:,time_step,:],state)
-
         z.append(q_net(input_data=batch[:,time_step,:],
                   market_encode=state,
                   y=l_batch[:,time_step,:],
@@ -103,7 +104,6 @@ def train_minibatch(batch,l_batch,anneal,seq_len = config.SEQ_LEN):
                         Y = Y,
                         prev_z=z[time_step],
                         )
-        # prev_z = z[seq_len]
         if(time_step == seq_len - 1):
             y,v_star = ATA(Y=Y,G=G,g_t=g)
         rec_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=y, labels=tf.argmax(l_batch[:,time_step,:],1))
@@ -113,36 +113,80 @@ def train_minibatch(batch,l_batch,anneal,seq_len = config.SEQ_LEN):
                             tf.square(p_z.distribution.std) + 0.0001) + 1, 1)
         rec_loss = tf.reshape(rec_loss,[config.BATCH_SIZE,1])
         kld = tf.reshape(kld,[config.BATCH_SIZE,1])
-        f.append(anneal*kld+rec_loss)
-
-    f = tf.concat([f],axis = 0)
-    f = tf.transpose(f,perm=[1,0,2])
+        klds.append(kld)
+        rec_losses.append(rec_loss)
+        # f.append(anneal*kld+rec_loss)
+    klds = tf.concat([klds],axis = 0)
+    klds = tf.transpose(klds,perm=[1,0,2])
+    rec_losses = tf.concat([rec_losses],axis = 0)
+    rec_losses = tf.transpose(rec_losses,perm = [1,0,2])
+    # f = tf.concat([f],axis = 0)
+    # f = tf.transpose(f,perm=[1,0,2])
+    f = anneal*klds + rec_losses
     v = tf.concat([config.ALPHA*v_star,tf.ones([config.BATCH_SIZE,1,1])],1)
     loss = tf.reduce_mean(tf.multiply(v,f))
-    # gradients = tf.gradients(loss, tf.trainable_variables())
     opt = tf.train.AdamOptimizer(learning_rate= config.LR)
     optimize = opt.minimize(loss)
-    return optimize,loss,v
+    return optimize,loss,v,tf.reduce_mean(klds[:,-1,:]),tf.reduce_mean(rec_losses[:,-1,:])
 
 if __name__ == "__main__":
-    import numpy as np
-    dataset,labelset = preprocess(shuffle = True)
+    tf.set_random_seed(1234)
+    np.random.seed(1234)
+    f = open("dataset", 'rb')
+    dataset = pickle.load(f)
+    f = open("labelset",'rb')
+    labelset = pickle.load(f)
     with tf.Graph().as_default() as graph:
         batch = tf.placeholder(shape = [config.BATCH_SIZE,config.SEQ_LEN,3],dtype=tf.float32,name = 'batch')
         l_batch = tf.placeholder(shape = [config.BATCH_SIZE,config.SEQ_LEN,2],dtype=tf.float32, name = 'l_batch')
         anneal = tf.placeholder(shape = [1],dtype = tf.float32)
-        optimize,loss,v= train_minibatch(batch = batch,l_batch= l_batch,anneal = anneal)
+        optimize,loss,_,last_kl,last_rec= train_minibatch(batch = batch,l_batch= l_batch,anneal = anneal)
         num_iters = len(dataset) // config.BATCH_SIZE
+        kl_sum = []
+        rec_sum = []
+        saver = tf.train.Saver()
+
         with tf.Session() as sess:
             for e in range(config.EPOCH):
                 for i in range(num_iters):
                     sess.run(tf.global_variables_initializer())
                     feed = {batch:dataset[i*config.BATCH_SIZE:(i+1)*config.BATCH_SIZE,:,:],
                             l_batch:labelset[i*config.BATCH_SIZE:(i+1)*config.BATCH_SIZE,:,:],
-                            anneal:np.array([min(2*(e+0.001)/(5*(num_iters*config.EPOCH)),0)])}
-                    _,temploss,V= sess.run([optimize,loss,v],feed_dict=feed)
+                            anneal:np.array([min(i*(e+0.0001)/(10000),1)])}
+                    _,temploss,kl,rec_loss= sess.run([optimize,loss,last_kl,last_rec],feed_dict=feed)
                     # print(y)
-                    print(temploss)
+                    print("loss",temploss,"kl:",kl,"rec:",rec_loss)
+                    kl_sum.append(kl)
+                    rec_sum.append(rec_loss)
+                saver.save(sess, "/models/model.ckpt"+str(e))
+
+        f = open("kl_summary",'wb')
+        pickle.dump(kl_sum,f)
+        f.close()
+        f = open("rec_sum",'wb')
+        pickle.dump(rec_sum,f)
+        f.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     # with tf.Graph().as_default() as graph:
         # input_data = tf.placeholder(tf.float32,[config.BATCH_SIZE,config.SEQ_LEN,3],'input_data')
         # input_label = tf.placeholder(tf.float32,[config.BATCH_SIZE,config.SEQ_LEN,2],'input_label')
