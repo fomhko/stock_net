@@ -2,22 +2,26 @@ import numpy as np
 import tensorflow as tf
 import pandas as pd
 import config
-def preprocess(datafile,shuffle = False):
-    f = open(datafile)
+import os
+def preprocess(shuffle = False):
     dataset = []
     labelset = []
     data = []
     label = []
     close_price = []
     count = 0
-    for line in f:
-        count += 1
-        split_line = line.split('\t')
-        data.append(np.array([float(i) for i in split_line[3:6]]))
-        close_price.append(float(split_line[5]))
-        if count >= config.SEQ_LEN:
-            dataset.append(np.array(data))
-            data.remove(data[0])
+    for root, dirs, files in os.walk(config.DATA_DIR):
+        for file_ in files:
+            f = open(os.path.join(root, file_))
+            for line in f:
+                count += 1
+                split_line = line.split('\t')
+                data.append(np.array([float(i) for i in split_line[3:6]]))
+                close_price.append(float(split_line[5]))
+                if data.__len__() >= config.SEQ_LEN:
+                    dataset.append(np.array(data))
+                    data.remove(data[0])
+            data = []
     close_price = np.array(close_price)
     for i in range(close_price.__len__()):
         if(i == close_price.__len__() - 1):
@@ -39,5 +43,5 @@ def preprocess(datafile,shuffle = False):
         labelset = labelset[ind]
     return dataset,labelset
 if __name__ == "__main__":
-    preprocess(config.DATA_DIR+"AAPL.txt")
+    dataset, labelset = preprocess(config.DATA_DIR)
 
