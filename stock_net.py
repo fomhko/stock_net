@@ -43,7 +43,7 @@ def p_net(observed,input_data,market_encode,prev_z,G,Y,gen_mode = False):
                                    reuse = tf.AUTO_REUSE)
         z = zs.Normal(name='z',mean=z_mean,logstd = z_logstd,group_ndims=2,reuse=tf.AUTO_REUSE)
         p_z = zs.Normal(name = 'pz', mean=z_mean,logstd = z_logstd,group_ndims=2,reuse=tf.AUTO_REUSE)
-        if gen_mode:#decode  ##debugging !!!!
+        if gen_mode:
             cat = tf.concat([input_data,
                             market_encode,
                             z_mean],1)
@@ -158,7 +158,7 @@ if __name__ == "__main__":
                     print("loss",temploss,"kl:",kl,"rec:",rec_loss)
                     kl_sum.append(kl)
                     rec_sum.append(rec_loss)
-                saver.save(sess, "/models/model.ckpt"+str(e))
+                saver.save(sess, "./models/model"+str(e)+".ckpt")
 
         f = open("kl_summary",'wb')
         pickle.dump(kl_sum,f)
