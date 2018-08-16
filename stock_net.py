@@ -26,7 +26,8 @@ def q_net(input_data,y,market_encode,prev_z):
                                  reuse=tf.AUTO_REUSE)
         z_logstd = tf.layers.dense(inputs = h_z, units = config.LATENT_SIZE, activation=tf.nn.tanh, name = 'z_delta',
                                    reuse = tf.AUTO_REUSE)
-        z = zs.Normal(mean = z_mean,logstd = z_logstd,group_ndims = 1,name='z',reuse = tf.AUTO_REUSE)
+        z = zs.Normal(mean = z_mean,logstd = tf.zeros(shape=z_logstd.shape,dtype=tf.float32),group_ndims = 1,name='z',
+                      reuse = tf.AUTO_REUSE)#debugging
     return z
 
 @zs.reuse('decoder')
@@ -97,7 +98,8 @@ def train_minibatch(batch,l_batch,anneal,seq_len = config.SEQ_LEN):
                   market_encode=state,
                   y=l_batch[:,time_step,:],
                   prev_z = z[time_step]))
-        y,g,p_z = p_net(observed={'z':z[time_step+1]},
+        y,g,p_z = p_net(observed={},
+                        # observed={'z':z[time_step+1]},
                         input_data=batch[:,time_step,:],
                         market_encode=state,
                         G = G,
@@ -152,7 +154,7 @@ if __name__ == "__main__":
                     sess.run(tf.global_variables_initializer())
                     feed = {batch:dataset[i*config.BATCH_SIZE:(i+1)*config.BATCH_SIZE,:,:],
                             l_batch:labelset[i*config.BATCH_SIZE:(i+1)*config.BATCH_SIZE,:,:],
-                            anneal:np.array([min(i*(e+0.0001)/(10000),1)])}
+                            anneal:np.array([min((num_iters*e+i)/(10000),1)])}
                     _,temploss,kl,rec_loss= sess.run([optimize,loss,last_kl,last_rec],feed_dict=feed)
                     # print(y)
                     print("loss",temploss,"kl:",kl,"rec:",rec_loss)

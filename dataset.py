@@ -23,7 +23,7 @@ def preprocess(shuffle = False):
                 if data.__len__() >= config.SEQ_LEN:
                     dataset.append(np.array(data))
                     data.remove(data[0])
-            data = []
+            # data = []
     close_price = np.array(close_price)
     for i in range(close_price.__len__()):
         if(i == close_price.__len__() - 1):
@@ -45,7 +45,7 @@ def preprocess(shuffle = False):
         labelset = labelset[ind]
     return dataset,labelset
 if __name__ == "__main__":
-    dataset, labelset = preprocess(config.DATA_DIR)
+    dataset, labelset = preprocess(shuffle=True)
     f = open("dataset",'wb')
     pickle.dump(dataset,f)
     f.close()
