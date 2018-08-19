@@ -162,7 +162,6 @@ def train_minibatch(batch,l_batch,anneal,seq_len = config.SEQ_LEN):
     optimize = opt.minimize(loss)
     return optimize,loss,v,tf.reduce_mean(klds[:,-1,:]),tf.reduce_mean(rec_losses[:,-1,:]),y
 
-
 def getArgParser():
     parser = argparse.ArgumentParser(description='Train the dual-stage attention-based model on stock')
     parser.add_argument(
@@ -170,6 +169,18 @@ def getArgParser():
         help='train or test')
     return parser
 
+def online_inference(dataset,labelset,inference,sess):
+    num_iters = len(dataset)//config.BATCH_SIZE
+    correct=0
+    total=0
+    for i in range(num_iters):
+        feed = {batch: dataset[i * config.BATCH_SIZE:(i + 1) * config.BATCH_SIZE, :, :]}
+        y_pred = sess.run([inference],feed_dict=feed)
+        y_gt = np.argmax(labelset[i * config.BATCH_SIZE:(i + 1) * config.BATCH_SIZE, :, :][:, -1, :], 1)
+        correct += np.sum(y_gt == y_pred)
+        total += config.BATCH_SIZE
+    acc = correct/total
+    return acc
 if __name__ == "__main__":
     args = getArgParser().parse_args()
     test = args.test
@@ -181,16 +192,24 @@ if __name__ == "__main__":
         l_batch = tf.placeholder(shape = [config.BATCH_SIZE,config.SEQ_LEN,2],dtype=tf.float32, name = 'l_batch')
         anneal = tf.placeholder(shape = [1],dtype = tf.float32)
         optimize,loss,_,last_kl,last_rec,y= train_minibatch(batch = batch,l_batch= l_batch,anneal = anneal)
-        inference = inference(batch)
-        kl_sum = []
-        rec_sum = []
-        acc_sum = []
+        inference = inference(batch)#graph construction
+
+
+
         saver = tf.train.Saver()
         if not test:
+            kl_sum = []
+            rec_sum = []
+            acc_sum = []
             f = open("dataset_train", 'rb')
             dataset = pickle.load(f)
             f = open("labelset_train", 'rb')
             labelset = pickle.load(f)
+            num_iters = len(dataset) // config.BATCH_SIZE
+            f = open("dataset_dev", 'rb')
+            dataset_dev = pickle.load(f)
+            f = open("labelset_dev", 'rb')
+            labelset_dev = pickle.load(f)
             num_iters = len(dataset) // config.BATCH_SIZE
             with tf.Session() as sess:
                 sess.run(tf.global_variables_initializer())
@@ -202,9 +221,12 @@ if __name__ == "__main__":
                         _,temploss,kl,rec_loss,y_view= sess.run([optimize,loss,last_kl,last_rec,y],feed_dict=feed)
                         # print(y)
 
-                        print("loss",temploss,"kl:",kl,"rec:",rec_loss,"acc")
+                        print("loss",temploss,"kl:",kl,"rec:",rec_loss)
                         kl_sum.append(kl)
                         rec_sum.append(rec_loss)
+                    acc = online_inference(dataset_dev,labelset_dev,inference,sess)
+                    acc_sum.append(acc)
+                    print("accuracy:",acc,"---------------------------------")
                     saver.save(sess, "./models/model"+str(e)+".ckpt")
         else:
             f = open("dataset_test", 'rb')
@@ -214,13 +236,13 @@ if __name__ == "__main__":
             num_iters = len(dataset) // config.BATCH_SIZE
             with tf.Session() as sess:
                 sess.run(tf.global_variables_initializer())
-                saver.restore(sess, "./models/model14.ckpt")
+                saver.restore(sess, "./models/model9.ckpt")
                 correct = 0
                 total = 0
                 for i in range(num_iters):
                     feed = {batch:dataset[i*config.BATCH_SIZE:(i+1)*config.BATCH_SIZE,:,:]}
                     y_pred = sess.run(inference,feed_dict = feed)
-                    y_gt = np.argmax(labelset[i * config.BATCH_SIZE:(i + 1) * config.BATCH_SIZE, :, :][:, -1, :],1)
+                    y_gt = np.argmax(labelset[i * config.BATCH_SIZE:(i + 1)  * config.BATCH_SIZE, :, :][:, -1, :],1)
                     correct += np.sum(y_gt == y_pred)
                     total += config.BATCH_SIZE
                 print()

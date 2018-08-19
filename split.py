@@ -8,8 +8,8 @@ def main():
             df = pd.read_csv(f,sep = '\t')
             test = df[:int(df.shape[0]*0.2)]
             train = df[int(df.shape[0]*0.2):]
-            train.to_csv("./train_data/"+file_,sep='\t',index = False)
-            test.to_csv("./test_data/"+file_,sep='\t',index=False)
+            train.to_csv("./train_data_raw/"+file_,sep='\t',index = False)
+            test.to_csv("./test_data_raw/"+file_,sep='\t',index=False)
 
 if __name__ == "__main__":
     main()
