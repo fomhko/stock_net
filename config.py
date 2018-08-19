@@ -1,8 +1,9 @@
-DATA_DIR = "price/preprocessed/"
-BATCH_SIZE = 32
-MIE_UNITS = 50
-LATENT_SIZE = 150
-ALPHA = 0.5
+DATA_DIR = "price/preprocessed"
+BATCH_SIZE = 128
+MIE_UNITS = 128
+LATENT_SIZE = 256
+ALPHA = 0.8
 SEQ_LEN = 5
-LR = 0.001
+LR = 1e-5
 EPOCH = 100
+SPLIT_RATIO = 0.8

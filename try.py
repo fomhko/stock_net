@@ -25,13 +25,23 @@ if __name__ == "__main__":
         #     dict = {x:np.zeros([10,10],np.float32)}
         #     x = sess.run([z_d],feed_dict = dict)
         #     print(x)
-        a = []
-        a .append(tf.zeros([32,10]))
-        a.append( tf.ones([32,10]))
-        a = tf.concat([a],axis = 1)
-        a =tf.transpose(a,perm = [1,0,2])
-        print(a)
-            # print(z_d.eval())
+        c = tf.placeholder(shape = [16,config.LATENT_SIZE],dtype=tf.float32,name = 'batch')
+        a = tf.zeros([16,10])
+        b = tf.layers.dense(inputs = a,units=config.LATENT_SIZE, name='g', activation=tf.nn.tanh,reuse = tf.AUTO_REUSE)
+        loss = tf.reduce_mean(tf.square(tf.subtract(b,c)))
+        opt = tf.train.AdamOptimizer(learning_rate=config.LR)
+        opt = tf.train.AdamOptimizer(learning_rate=config.LR)
+        gradients = tf.gradients(loss, tf.trainable_variables())
+        clipped_grad, _ = tf.clip_by_global_norm(gradients, 5)
+        optimize = opt.apply_gradients(zip(clipped_grad,
+                                           tf.trainable_variables()))
+
+        with tf.Session() as sess:
+            sess.run(tf.global_variables_initializer())
+            feed = {c:np.ones([16,config.LATENT_SIZE])}
+            while(1):
+                _,loss_ = sess.run([optimize,loss],feed_dict=feed)
+                print(loss_)
         #
 
         # print(z.eval())
