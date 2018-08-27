@@ -68,19 +68,27 @@ def preprocess(path = "train_data_raw",shuffle = False):
 
 
 if __name__ == "__main__":
-    dataset, labelset = preprocess(path = "train_data_raw",shuffle=True)
-    f = open("dataset_train",'wb')
-    pickle.dump(dataset,f)
-    f.close()
-    f = open("labelset_train",'wb')
-    pickle.dump(labelset,f)
-    f.close()
+    # dataset, labelset = preprocess(path = "train_data_raw",shuffle=True)
+    # f = open("dataset_train",'wb')
+    # pickle.dump(dataset,f)
+    # f.close()
+    # f = open("labelset_train",'wb')
+    # pickle.dump(labelset,f)
+    # f.close()
+    #
+    # dataset, labelset = preprocess(path="test_data_raw", shuffle=False)
+    # f = open("dataset_test", 'wb')
+    # pickle.dump(dataset, f)
+    # f.close()
+    # f = open("labelset_test", 'wb')
+    # pickle.dump(labelset, f)
+    # f.close()
 
-    dataset, labelset = preprocess(path="test_data_raw", shuffle=False)
-    f = open("dataset_test", 'wb')
+    dataset, labelset = preprocess(path="dev_data_raw", shuffle=False)
+    f = open("dataset_dev", 'wb')
     pickle.dump(dataset, f)
     f.close()
-    f = open("labelset_test", 'wb')
+    f = open("labelset_dev", 'wb')
     pickle.dump(labelset, f)
     f.close()
 
