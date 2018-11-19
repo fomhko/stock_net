@@ -277,13 +277,4 @@ if __name__ == "__main__":
                     total += config.BATCH_SIZE
                 acc = correct / total
                 print(acc)
-        # f = open("kl_summary",'wb')
-        # pickle.dump(kl_sum,f)
-        # f.close()
-        # f = open("rec_sum",'wb')
-        # pickle.dump(rec_sum,f)
-        # f.close()
-# acc = (np.argmax(y_view, 1) ==0.5509868421052632
-#0.5571546052631579
-#                            labelset[i * config.BATCH_SIZE:(i + 1) * config.BATCH_SIZE, :, :][:, -1, :].argmax(1)).sum()\
-#                           / config.BATCH_SIZE
+
